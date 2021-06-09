@@ -1,19 +1,16 @@
-import re
-import pandas as pd
 import json
 import os
 import requests
 from discord.ext import commands
 import discord
-TOKEN = 'TOKE HERE'
+TOKEN = 'TOKEN'
 # TOKEN = os.getenv('TOKEN')
 client = commands.Bot(command_prefix="dc!")
-html = requests.get('https://www.worldometers.info/coronavirus/').text
-html = re.sub(r'<.*?>', lambda g: g.group(0).upper(), html)
-df = pd.read_html(html)
-js = df[0].to_json()
-js = json.loads(js)
-from ka import keepalive
+def generate():
+    url = "https://api.quarantine.country/api/v1/summary/latest"
+    response = requests.get(url)
+    data = response.json()
+    return data
 
 common_symp = ['fever',
                 'dry cough',
@@ -47,16 +44,14 @@ async def help(ctx):
         title="DisCovid Help", description="Type dc!help <command> for more info on a command.", color=0x800000)
     embed.add_field(name="Covid", value="dc!help Covid", inline=True)
     embed.add_field(name="Symptoms", value="dc!help Symptoms", inline=False)
-    embed.add_field(name="ActiveCases", value="dc!help ActiveCases", inline=False)
-    embed.add_field(name="TotalDeaths", value="dc!help TotalDeaths", inline=False)
-    embed.add_field(name="TotalCases", value="dc!help TotalCases", inline=False)
-    embed.add_field(name="TotalRecovered", value="dc!help TotalRecovered", inline=False)
+    embed.add_field(name="Country", value="dc!Country", inline=False)
+    embed.add_field(name="World", value="dc!World", inline=False)
     embed.set_footer(
         text="Suggestions? Go to https://bit.ly/3dGGNzd and Submit your Suggestion :D")
     await ctx.send(embed=embed)
 
 
-@help.command()
+@help.command(aliases=['covid'])
 async def Covid(ctx):
     embed = discord.Embed(
         title="Covid", description="What is Covid 19", color=0x800000)
@@ -65,35 +60,19 @@ async def Covid(ctx):
 
 
 @help.command()
-async def ActiveCases(ctx):
-    embed = discord.Embed(title="ActiveCases",
-                          description="Total Active Cases", color=0x800000)
-    embed.add_field(name="Syntax", value="dc!ActiveCases", inline=True)
+async def Country(ctx):
+    embed = discord.Embed(title="Country",
+                          description="Stats of a particular country", color=0x800000)
+    embed.add_field(name="Syntax", value="dc!Country", inline=True)
     await ctx.send(embed=embed)
-
-
+    
 @help.command()
-async def TotalDeaths(ctx):
-    embed = discord.Embed(
-        title="TotalDeaths", description="Total Deaths Due To Covid", color=0x800000)
-    embed.add_field(name="Syntax", value="dc!TotalDeaths", inline=True)
+async def World(ctx):
+    embed = discord.Embed(title="Country",
+                          description="Stats of World", color=0x800000)
+    embed.add_field(name="Syntax", value="dc!World", inline=True)
     await ctx.send(embed=embed)
 
-
-@help.command()
-async def TotalCases(ctx):
-    embed = discord.Embed(title="TotalCases",
-                          description="Total Covid Cases", color=0x800000)
-    embed.add_field(name="Syntax", value="dc!TotalCases", inline=True)
-    await ctx.send(embed=embed)
-
-
-@help.command()
-async def TotalRecovered(ctx):
-    embed = discord.Embed(title="TotalRecovered",
-                          description="Total Recovered Cases", color=0x800000)
-    embed.add_field(name="Syntax", value="dc!TotalRecovered", inline=True)
-    await ctx.send(embed=embed)
 
 @help.command()
 async def Symptoms(ctx):
@@ -101,7 +80,7 @@ async def Symptoms(ctx):
     embed.add_field(name="Syntax", value="dc!Symptoms", inline=True)
     await ctx.send(embed=embed)
     
-@client.command()
+@client.command(aliases=['covid'])
 async def Covid(ctx):
     embed = discord.Embed(title="Covid", color=0x800000)
     embed.set_thumbnail(
@@ -111,84 +90,42 @@ async def Covid(ctx):
     await ctx.send(embed=embed)
 
 
-@client.command(aliases=['total', 'TotalCases'])
-async def totalcases(ctx):
-    embed = discord.Embed(title="Total Covid Cases", url="https://www.worldometers.info/coronavirus/",
-                          description="Total covid cases in the whole world, All continents and top 10 countries", color=0xa30000)
+@client.command(aliases=['Country'])
+async def country(ctx, country):
+    country = country.lower()
+    embed = discord.Embed(title=f"Covid Stats of {country}", url="https://www.worldometers.info/coronavirus/",
+                          description="Stats", color=0xa30000)
     embed.set_thumbnail(
         url="https://www.fda.gov/files/Coronavirus_3D_illustration_by_CDC_1600x900.png")
-    embed.add_field(name="World", value=js["TotalCases"]["7"], inline=False)
-    embed.add_field(name="Continents", value='5 Continents', inline=False)
-    for i in range(5):
-        embed.add_field(name=js["Country,Other"][str(i+1)],
-                        value=js["TotalCases"][str(i+1)])
-    embed.add_field(name="Top 3 countries", value='3 Countries', inline=False)
-    for i in range(3):
-        embed.add_field(name=js["Country,Other"][str(i+8)],
-                        value=js["TotalCases"][str(i+8)])
-    embed.set_footer(text="source: https://www.worldometers.info/coronavirus/")
+    data = generate()
+    embed.add_field(name="Total Cases", value=data['data']['regions'][country]['total_cases'], inline=False)
+    embed.add_field(name="Active Cases", value=data['data']['regions'][country]['active_cases'], inline=False)
+    embed.add_field(name="Total Deaths", value=data['data']['regions'][country]['deaths'], inline=False)
+    embed.add_field(name="Total Recovered", value=data['data']['regions'][country]['recovered'], inline=False)
+    embed.add_field(name="Critical", value=data['data']['regions'][country]['critical'])
+    embed.add_field(name="Tested", value=data['data']['regions'][country]['tested'], inline=False)
+    embed.add_field(name="Death ratio", value=data['data']['regions'][country]['death_ratio'], inline=False)
+    embed.add_field(name="Recovery ratio", value=data['data']['regions'][country]['recovery_ratio'], inline=False)
     await ctx.send(embed=embed)
-
-
-@client.command(aliases=['deaths', 'TotalDeaths'])
-async def totaldeaths(ctx):
-    embed = discord.Embed(title="Total Deaths Due To Covid", url="https://www.worldometers.info/coronavirus/",
-                          description="Total Deaths Due To Covid in the whole world, All continents and top 10 countries", color=0xa30000)
+    
+@client.command(aliases=['World'])
+async def world(ctx):
+    embed = discord.Embed(title=f"Covid Stats of World", url="https://www.worldometers.info/coronavirus/",
+                          description="Stats", color=0xa30000)
     embed.set_thumbnail(
         url="https://www.fda.gov/files/Coronavirus_3D_illustration_by_CDC_1600x900.png")
-    embed.add_field(name="World", value=js["TotalDeaths"]["7"], inline=False)
-    embed.add_field(name="Continents", value='5 Continents', inline=False)
-    for i in range(5):
-        embed.add_field(name=js["Country,Other"][str(i+1)],
-                        value=js["TotalDeaths"][str(i+1)])
-    embed.add_field(name="Top 3 countries", value='3 Countries', inline=False)
-    for i in range(3):
-        embed.add_field(name=js["Country,Other"][str(i+8)],
-                        value=js["TotalDeaths"][str(i+8)])
-    embed.set_footer(text="source: https://www.worldometers.info/coronavirus/")
+    data = generate()
+    embed.add_field(name="Total Cases", value=data['data']['summary']['total_cases'], inline=False)
+    embed.add_field(name="Active Cases", value=data['data']['summary']['active_cases'], inline=False)
+    embed.add_field(name="Total Deaths", value=data['data']['summary']['deaths'], inline=False)
+    embed.add_field(name="Total Recovered", value=data['data']['summary']['recovered'], inline=False)
+    embed.add_field(name="Critical", value=data['data']['summary']['critical'])
+    embed.add_field(name="Tested", value=data['data']['summary']['tested'], inline=False)
+    embed.add_field(name="Death ratio", value=data['data']['summary']['death_ratio'], inline=False)
+    embed.add_field(name="Recovery ratio", value=data['data']['summary']['recovery_ratio'], inline=False)
     await ctx.send(embed=embed)
 
-
-@client.command(aliases=["recovered", "totalrecovered"])
-async def TotalRecovered(ctx):
-    embed = discord.Embed(title="Total Recovered Covid Cases", url="https://www.worldometers.info/coronavirus/",
-                          description="Total Recovered covid cases in the whole world, All continents and top 10 countries", color=0xa30000)
-    embed.set_thumbnail(
-        url="https://www.fda.gov/files/Coronavirus_3D_illustration_by_CDC_1600x900.png")
-    embed.add_field(
-        name="World", value=js["TotalRecovered"]["7"], inline=False)
-    embed.add_field(name="Continents", value='5 Continents', inline=False)
-    for i in range(5):
-        embed.add_field(name=js["Country,Other"][str(i+1)],
-                        value=js["TotalRecovered"][str(i+1)])
-    embed.add_field(name="Top 3 countries", value='3 Countries', inline=False)
-    for i in range(3):
-        embed.add_field(name=js["Country,Other"][str(i+8)],
-                        value=js["TotalRecovered"][str(i+8)])
-    embed.set_footer(text="source: https://www.worldometers.info/coronavirus/")
-    await ctx.send(embed=embed)
-
-
-@client.command(aliases=['Active', 'activecases'])
-async def ActiveCases(ctx):
-    embed = discord.Embed(title="Total Active Covid Cases", url="https://www.worldometers.info/coronavirus/",
-                          description="Total Active covid cases in the whole world, All continents and top 10 countries", color=0xa30000)
-    embed.set_thumbnail(
-        url="https://www.fda.gov/files/Coronavirus_3D_illustration_by_CDC_1600x900.png")
-    embed.add_field(name="World", value=js["ActiveCases"]["7"], inline=False)
-    embed.add_field(name="Continents", value='5 Continents', inline=False)
-    for i in range(5):
-        embed.add_field(name=js["Country,Other"][str(i+1)],
-                        value=js["ActiveCases"][str(i+1)])
-    embed.add_field(name="Top 3 countries", value='3 Countries', inline=False)
-    for i in range(3):
-        embed.add_field(name=js["Country,Other"][str(i+8)],
-                        value=js["ActiveCases"][str(i+8)])
-    embed.set_footer(text="source: https://www.worldometers.info/coronavirus/")
-    await ctx.send(embed=embed)
-
-
-@client.command()
+@client.command(aliases=['symptoms'])
 async def Symptoms(ctx):
     embed=discord.Embed(title="Symptoms", description='Symptoms of Covid 19', color=0xa30000)
     embed.add_field(name="Most Common Symptoms", value="fever \ndry cough \ntiredness", inline=False)
@@ -196,5 +133,4 @@ async def Symptoms(ctx):
     embed.set_footer(text="source https://bit.ly/3t1XFHa")
     await ctx.send(embed=embed)
 
-keepalive()
 client.run(TOKEN)
