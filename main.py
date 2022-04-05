@@ -9,8 +9,7 @@ client = commands.Bot(command_prefix="dc!")
 def generate():
     url = "https://api.quarantine.country/api/v1/summary/latest"
     response = requests.get(url)
-    data = response.json()
-    return data
+    return response.json()
 
 common_symp = ['fever',
                 'dry cough',
@@ -110,8 +109,13 @@ async def country(ctx, country):
     
 @client.command(aliases=['World'])
 async def world(ctx):
-    embed = discord.Embed(title=f"Covid Stats of World", url="https://www.worldometers.info/coronavirus/",
-                          description="Stats", color=0xa30000)
+    embed = discord.Embed(
+        title="Covid Stats of World",
+        url="https://www.worldometers.info/coronavirus/",
+        description="Stats",
+        color=0xA30000,
+    )
+
     embed.set_thumbnail(
         url="https://www.fda.gov/files/Coronavirus_3D_illustration_by_CDC_1600x900.png")
     data = generate()
